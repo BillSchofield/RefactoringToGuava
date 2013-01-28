@@ -1,23 +1,67 @@
 package org.bill.RefactoringToGuava;
 
 
+import com.sun.tools.javac.util.Pair;
+
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class Pairing {
 
     private static final int COMPARE_FLIGHT_DUTY = 0;
     private static final int COMPARE_WORK_BLOCK = 1;
 
-    public Pairing findLeastRestBetweenPairings(Line line, int ruleRest, int comparemethod) {  //MB 9/2012 Remove brief & debrief.  Previously set to 0.
+    public Pairing findLeastRestBetweenPairings(Line line, int ruleRest, int compareMethod) {  //MB 9/2012 Remove brief & debrief.  Previously set to 0.
         Pairing aPair = null;
-        ArrayList<Pairing> pairingarray = createPairingRuleArray(line);
-        ArrayList<LinePairing> linepairingarray = createLinePairingRuleArray(line);
-        Pairing pairing1 = null;
-        Pairing pairing2 = null;
-        LinePairing linepairing1;
-        LinePairing linepairing2;
-        int rest = 0;
-        Integer leastrest = null;
+        List<Pairing> pairingArray = createPairingRuleArray(line);
+        List<Pair<Pairing, Pairing>> pairingPairs = pairUpNeighbors(pairingArray);
+        List<LinePairing> linePairingArray = createLinePairingRuleArray(line);
+        List<Pair<LinePairing, LinePairing>> linePairingPairs = pairUpNeighbors(linePairingArray);
+        Integer leastRest = null;
+        Iterator<Pair<LinePairing,LinePairing>> linePairingPairIterator = linePairingPairs.iterator();
+        boolean debugOn = isDebugOn(line);
+        for (Pair<Pairing, Pairing> pairingPair : pairingPairs) {
+            Pair<LinePairing, LinePairing> linePairingPair = linePairingPairIterator.next();
+            switch (compareMethod) {
+                case COMPARE_FLIGHT_DUTY:
+                    aPair = getLinePairingRestTimeByDutyBetweenPairings(pairingPair, linePairingPair, ruleRest, debugOn);
+                    if (aPair != null) {
+                        return aPair;
+                    }
+                    break;
+                case COMPARE_WORK_BLOCK:
+                    Integer rest = getLinePairingRestTimeByWorkBlock(pairingPair, linePairingPair);
+                    if ((leastRest == null) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
+                        leastRest = rest;
+                    }
+                    if ((leastRest != null) && (rest < leastRest.intValue()) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
+                        leastRest = rest;
+                    }
+                    if (leastRest != null) {
+                        if (leastRest.intValue() < ruleRest) {
+                            return pairingPair.fst;
+                        }
+                    }
+                    break;
+            }
+        }
+        return aPair;
+    }
+
+    private Integer getLinePairingRestTimeByWorkBlock(Pair<Pairing, Pairing> pairingPair, Pair<LinePairing, LinePairing> linePairingPair) {
+        return null;
+    }
+
+    private Pairing getLinePairingRestTimeByDutyBetweenPairings(Pair<Pairing, Pairing> pairingPair, Pair<LinePairing, LinePairing> linePairingPair, int ruleRest, boolean debugOn) {
+        return null;
+    }
+
+    private <T> List<Pair<T, T>> pairUpNeighbors(List<T> array) {
+        return null;
+    }
+
+    private boolean isDebugOn(Line line) {
         boolean debugOn = false;
         if (line.getLineSolutionID() == 71493) {
             if (line.getBidLineNumber() == 17) {
@@ -26,35 +70,7 @@ public class Pairing {
                 debugOn = false;
             }
         }
-        for (int n = 1; n < pairingarray.size(); n++) {
-            pairing1 = pairingarray.get((n - 1));
-            pairing2 = pairingarray.get(n);
-            linepairing1 = linepairingarray.get(n - 1);
-            linepairing2 = linepairingarray.get(n);
-            switch (comparemethod) {
-                case COMPARE_FLIGHT_DUTY:
-                    aPair = getLinePairingRestTimeByDutyBetweenPairings(pairing1, linepairing1, pairing2, linepairing2, ruleRest, debugOn);
-                    if (aPair != null) {
-                        return aPair;
-                    }
-                    break;
-                case COMPARE_WORK_BLOCK:
-                    rest = getLinePairingRestTimeByWorkBlock(pairing1, linepairing1, pairing2, linepairing2);
-                    if ((leastrest == null) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
-                        leastrest = new Integer(rest);
-                    }
-                    if ((leastrest != null) && (rest < leastrest.intValue()) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
-                        leastrest = new Integer(rest);
-                    }
-                    if (leastrest != null) {
-                        if (leastrest.intValue() < ruleRest) {
-                            return pairing1;
-                        }
-                    }
-                    break;
-            }
-        }
-        return aPair;
+        return debugOn;
     }
 
     private boolean ignoreDaylightSavingsEffect(int rest) {
@@ -67,18 +83,6 @@ public class Pairing {
 
     private ArrayList<LinePairing> createLinePairingRuleArray(Line line){
         return null;
-    }
-
-    private Pairing getLinePairingRestTimeByDutyBetweenPairings(
-            Pairing pairing1, LinePairing linepairing1,
-            Pairing pairing2, LinePairing linepairing2,
-            int ruleRest, boolean debugOn){
-        return null;
-    }
-
-    private int getLinePairingRestTimeByWorkBlock(Pairing pairing1, LinePairing linepairing1,
-                                                  Pairing pairing2, LinePairing linepairing2){
-        return 0;
     }
 }
 
