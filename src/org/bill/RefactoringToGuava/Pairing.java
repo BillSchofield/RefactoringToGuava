@@ -1,11 +1,16 @@
 package org.bill.RefactoringToGuava;
 
 
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.sun.tools.javac.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static com.google.common.collect.Iterables.find;
+import static com.google.common.collect.Lists.transform;
 
 public class Pairing {
 
@@ -19,30 +24,11 @@ public class Pairing {
             case COMPARE_FLIGHT_DUTY:
                 return compareFlightDuty(ruleRest, pairingPairs, linePairingPairIterator, isDebugOn(line));
             case COMPARE_WORK_BLOCK:
-                return compareWorkBlock(ruleRest, pairingPairs, linePairingPairIterator);
+                List<RestAndPairings> rests = transform(pairingPairs, new RestFromPairings(linePairingPairIterator));
+                return find(rests, new RestIsLestThan(ruleRest)).pairings.fst;
             default:
                 return null;
         }
-    }
-
-    private Pairing compareWorkBlock(int ruleRest, List<Pair<Pairing, Pairing>> pairingPairs, Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator) {
-        Integer leastRest = null;
-        for (Pair<Pairing, Pairing> pairingPair : pairingPairs) {
-            Pair<LinePairing, LinePairing> linePairingPair = linePairingPairIterator.next();
-            Integer rest = getLinePairingRestTimeByWorkBlock(pairingPair, linePairingPair);
-            if ((leastRest == null) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
-                leastRest = rest;
-            }
-            if ((leastRest != null) && (rest < leastRest.intValue()) && (rest != 0) && !ignoreDaylightSavingsEffect(rest)) {
-                leastRest = rest;
-            }
-            if (leastRest != null) {
-                if (leastRest.intValue() < ruleRest) {
-                    return pairingPair.fst;
-                }
-            }
-        }
-        return null;
     }
 
     private Pairing compareFlightDuty(int ruleRest, List<Pair<Pairing, Pairing>> pairingPairs, Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator, Boolean isDebugOn) {
@@ -101,6 +87,44 @@ public class Pairing {
 
     private ArrayList<LinePairing> createLinePairingRuleArray(Line line){
         return null;
+    }
+
+    private class RestAndPairings {
+        public final Pair<Pairing, Pairing> pairings;
+        public final Pair<LinePairing, LinePairing> linePairings;
+        public final Integer rest;
+
+        private RestAndPairings(Pair<Pairing, Pairing> pairings, Pair<LinePairing, LinePairing> linePairings, Integer rest) {
+            this.pairings = pairings;
+            this.linePairings = linePairings;
+            this.rest = rest;
+        }
+    }
+    private class RestFromPairings implements Function<Pair<Pairing, Pairing>, RestAndPairings> {
+
+        private final Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator;
+
+        public RestFromPairings(Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator) {
+            this.linePairingPairIterator = linePairingPairIterator;
+        }
+
+        public RestAndPairings apply(Pair<Pairing, Pairing> pairingPair) {
+            Pair<LinePairing, LinePairing> linePairingPair = linePairingPairIterator.next();
+            return new RestAndPairings(pairingPair, linePairingPair, getLinePairingRestTimeByWorkBlock(pairingPair, linePairingPair));
+        }
+    }
+
+    private class RestIsLestThan implements Predicate<RestAndPairings> {
+        private final int ruleRest;
+
+        public RestIsLestThan(int ruleRest) {
+            this.ruleRest = ruleRest;
+        }
+
+        public boolean apply(RestAndPairings restAndPairings) {
+            Integer rest = restAndPairings.rest;
+            return rest != 0 && !ignoreDaylightSavingsEffect(rest) && rest < ruleRest;
+        }
     }
 }
 
