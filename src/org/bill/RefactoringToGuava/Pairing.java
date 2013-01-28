@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.find;
 import static com.google.common.collect.Lists.transform;
 
@@ -22,24 +23,14 @@ public class Pairing {
         Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator = linePairingPairIterator(line);
         switch (compareMethod) {
             case COMPARE_FLIGHT_DUTY:
-                return compareFlightDuty(ruleRest, pairingPairs, linePairingPairIterator, isDebugOn(line));
+                List<Pairing> pairings = transform(pairingPairs, new PairingFrom(linePairingPairIterator, ruleRest, isDebugOn(line)));
+                return find(pairings, notNull());
             case COMPARE_WORK_BLOCK:
                 List<RestAndPairings> rests = transform(pairingPairs, new RestFromPairings(linePairingPairIterator));
                 return find(rests, new RestIsLestThan(ruleRest)).pairings.fst;
             default:
                 return null;
         }
-    }
-
-    private Pairing compareFlightDuty(int ruleRest, List<Pair<Pairing, Pairing>> pairingPairs, Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator, Boolean isDebugOn) {
-        for (Pair<Pairing, Pairing> pairingPair : pairingPairs) {
-            Pair<LinePairing, LinePairing> linePairingPair = linePairingPairIterator.next();
-            Pairing pair = getLinePairingRestTimeByDutyBetweenPairings(pairingPair, linePairingPair, ruleRest, isDebugOn);
-            if (pair != null) {
-                return pair;
-            }
-        }
-        return null;
     }
 
     private List<Pair<Pairing, Pairing>> pairingPairs(Line line) {
@@ -124,6 +115,23 @@ public class Pairing {
         public boolean apply(RestAndPairings restAndPairings) {
             Integer rest = restAndPairings.rest;
             return rest != 0 && !ignoreDaylightSavingsEffect(rest) && rest < ruleRest;
+        }
+    }
+
+    private class PairingFrom implements Function<Pair<Pairing, Pairing>, Pairing> {
+        private final Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator;
+        private final int ruleRest;
+        private final Boolean debugOn;
+
+        public PairingFrom(Iterator<Pair<LinePairing, LinePairing>> linePairingPairIterator, int ruleRest, Boolean debugOn) {
+            this.linePairingPairIterator = linePairingPairIterator;
+            this.ruleRest = ruleRest;
+            this.debugOn = debugOn;
+        }
+
+        public Pairing apply(Pair<Pairing, Pairing> pairingPair) {
+            Pair<LinePairing, LinePairing> linePairingPair = linePairingPairIterator.next();
+            return getLinePairingRestTimeByDutyBetweenPairings(pairingPair, linePairingPair, ruleRest, debugOn);
         }
     }
 }
